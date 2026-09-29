@@ -40,7 +40,7 @@ ExtraProject/
 |---|---------|-----------|--------------|-----------|-----------|--------|
 | 1 | [`720p-snake-game-verilog/`](720p-snake-game-verilog/) | Interactive browser-based documentation site for a 720p SoC-FPGA snake-game RTL reference. Contains full source of every Verilog module as embedded, copyable, syntax-highlighted source. | DE1-SoC (Cyclone V SoC) | Vite 7 + React 19 + TypeScript 5.9 + Tailwind 4 | 6 modules embedded as strings | [→](720p-snake-game-verilog/README.md) |
 | 2 | [`uart/`](uart/) | Parameterised 115200-baud UART transmitter + receiver wired as a **loopback**, with LEDs exposing internal state for hardware debug. | Cyclone V GX Starter Kit + DE1-SoC variant | Quartus Prime (18.1 Lite / 25.1) + ModelSim | 3 hand-written | [→](uart/README.md) · [uart_z/](uart/uart_z/README.md) |
-| 3 | [`vga_controller with image/`](vga_controller%20with%20image/) | VESA 1280×720@60 video timing generator plus two pixel sources: an on-chip Block-ROM image, and an Avalon-MM DMA master that streams an 8bpp frame buffer out of DDR3 through a dual-clock FIFO. | DE1-SoC `5CSEMA5F31C6` | Quartus Prime 25.1 Lite + Questa | 8 hand-written + 2 generated | [→](vga_controller%20with%20image/README.md) · [inner](vga_controller%20with%20image/vga_controller%20with%20image/README.md) |
+| 3 | [`vga_controller with image/`](vga_controller%20with%20image/) | VESA 1280×720@60 video timing generator plus two pixel sources: an on-chip Block-ROM image (compiled), and an Avalon-MM DMA master that streams an 8bpp frame buffer out of DDR3 through a dual-clock FIFO (present, not compiled). | DE1-SoC `5CSEMA5F31C6` | Quartus Prime 25.1 Lite + Questa | 8 hand-written + 3 generated | [→](vga_controller%20with%20image/README.md) · [inner](vga_controller%20with%20image/vga_controller%20with%20image/README.md) |
 | 4 | `Znake-master.zip` | Third-party reference implementation of a Zynq snake game (block design + AXI IPs + C software). **Archive only — not extracted.** | Xilinx Zedboard (Zynq-7000) | Vivado 2017.4 | Inside archive | — |
 | 5 | `Siemens_Questa_Advanced_Simulator_2024.1-*.zip` | Vendor installer for Siemens Questa Advanced Simulator 2024.1, referenced by the `simulation/questa/` folders in project 3. **Archive only — not extracted.** | n/a | n/a | n/a | — |
 
@@ -242,7 +242,66 @@ failed attempts.
 `simulation/questa/msim_transcript`, `simulation/questa/vsim.wlf` and the `rtl_work/`
 directory, then re-launch. Do the same if the `.do` script needs regenerating.
 
-### 4. Camera / video-in files are vestigial
+### 4. `de1soc_vga720p_top.v` is an orphaned near-duplicate of the real top level
+
+The VGA project folder contains several copies of the top-level module. The compiled one is
+`de1soc_vga720p_onchip_top.v` (136 lines). `de1soc_vga720p_top.v` (141 lines) differs from it
+by exactly one five-line block — a *parameterised* `image_rom` instantiation:
+
+```verilog
+image_rom #(
+    .IMG_WIDTH  (IMG_WIDTH),
+    .IMG_HEIGHT (IMG_HEIGHT),
+    .ADDR_WIDTH (ADDR_WIDTH),
+    .HEX_FILE   ("image.hex")
+) u_rom ( ... );
+```
+
+Two problems if you ever add it to the QSF:
+
+1. It still declares `module de1soc_vga720p_onchip_top` — the *same* module name as the real
+   top level, so a "compile everything" sweep is a duplicate-module error.
+2. It calls `image_rom` with parameters, but the current `image_rom.v` is deliberately
+   parameterless (that is the OOM fix in issue 1).
+
+`de1soc_vga720p_top.v.bak` is an older, genuinely different `module de1soc_vga720p_top`
+(123 lines). `de1soc_vga720p_onchip_top.v.bak` and `de1soc_vga720p_onchip_top.txt` are both
+copies of the 141-line parameterised version. None of the four are in the QSF.
+
+### 5. The DDR3 / Avalon-MM path is present but not compiled
+
+`vga_controller.qsf` lists only seven files:
+
+```
+VERILOG_FILE vga_timing.v
+VERILOG_FILE reset_sync.v
+QIP_FILE     pll_74p25.qip
+SIP_FILE     pll_74p25.sip
+QIP_FILE     video_fifo.qip
+VERILOG_FILE de1soc_vga720p_onchip_top.v
+VERILOG_FILE image_rom.v
+HEX_FILE     image.hex
+```
+
+So `avalon_dma_master.v`, `pixel_unpacker.v` and the testbench are **not** synthesised. Two
+consequences:
+
+* Nothing instantiates `video_fifo`, so the fitter optimises it away — that is why the
+  report shows 76 RAM blocks (the ROM alone) and 0 DSP blocks.
+* There is no HPS, no `f2h_sdram_master` and no DDR3 in the design. The `0x38000000` base
+  address in `avalon_dma_master.v` is dead code in the current build.
+
+The testbench still works because EDA simulation is set to `TEST_BENCH_MODE` with
+`EDA_TEST_BENCH_NAME tb_avalon_dma_master`.
+
+### 6. `pll_74p25` was generated for the wrong device
+
+The PLL IP header records `device = "5CEBA2F17A7"` while the project targets
+`5CSEMA5F31C6`. Both are Cyclone V and the divider ratios are correct for 74.25 MHz from
+50 MHz, so it compiles, locks and meets timing with +3.78 ns of slack. Re-create the PLL
+against the real device if you ever regenerate it.
+
+### 7. Camera / video-in files are vestigial
 
 `vga_controller.qsf` contains the complete DE1-SoC board pin assignment including the
 video-in decoder pins (`TD_CLK27`, `TD_DATA[7:0]`, `TD_HS`, `TD_VS`, `TD_RESET_N`).
@@ -264,9 +323,9 @@ all produced by the Quartus Prime compilation flow and are safe to regenerate.
 | `.sdc` | Standard Delay Constraints | TimeQuest constraints (`create_clock`, `set_input_delay`, `set_false_path`). |
 | `.qip` | Quartus IP File | Lists an IP core's source files for inclusion in the project. |
 | `.sip` | System IP File | IP variant that also registers simulation model libraries. |
-| `.spd` | SignalWeb/Diamond IP Definition | IP Compiler's parameter/specification database. |
+| `.spd` | Simulation Package Descriptor | XML file pointing the simulator at an IP core's precompiled model (e.g. `pll_74p25_sim/pll_74p25.vo`) and naming its top level. |
 | `.bsf` | Bus Spec File | Legacy per-signal bus declarations (type + width). |
-| `.ppf` | Pin Preferences File | Legacy pin-order file. |
+| `.ppf` | Pin Plan File | XML pin-direction/scope plan for an IP core's ports. |
 | `.cmp` | Component Declaration | VHDL component/entity declaration for black-box IP. |
 | `.vo` | VHDL Output | Precompiled simulation model (older naming). |
 | `.sft` | Signal Flow Trace | Quartus post-fit timing-analysis intermediate file. |
@@ -305,7 +364,7 @@ all produced by the Quartus Prime compilation flow and are safe to regenerate.
 | `.msim_transcript` | — | ModelSim invocation log. |
 | `nl_common.txt`, `*_setup.tcl`, `*_libs.txt` | NativeLink | Generated third-party simulator library-include scripts. |
 | `.tcl` | Tcl Script | `pin_assignment_DE1_SoC.tcl` is the Terasic board pin-assignment script. |
-| `.hex` | Intel HEX | Raw image data loaded by `$readmemh` into `image_rom`. |
+| `.hex` | Readmem Hex Data | Plain text, one hex byte per line, loaded by `$readmemh` into `image_rom`. **Not** Intel HEX — that format has record/checksum framing and this file has none. |
 | `.mif` | Memory Initialisation File | Quartus-generated alternative to `.hex` for RAM init. |
 | `.bak` | Backup | Previous revision of a source file, kept for reference. Not compiled. |
 | `.log` | Log | Tool-generated log. `hs_err_*` is a JVM crash log; `replay_*` is its HotSpot replay companion. |
