@@ -17,8 +17,7 @@ Minister's **National Semiconductor HR Development Programme (NSHRDP – INSPIRE
 | **Lead industry partner** | Pakistan Software Export Board (PSEB) |
 | **Academic partners** | Sir Syed University of Engineering & Technology (SSUET), UIT University |
 | **Duration** | 4 months, intensive |
-| **Stipend** | PKR 10,000 per month |
-| **Apply now** | <https://lnkd.in/dfaPiFiy> |
+
 
 **Highlights**
 
