@@ -1146,9 +1146,8 @@ noted. Where a project has unresolved defects, the defects are listed.
 **NSHRDP – INSPIRE** · NED University of Engineering & Technology · Pakistan Software Export Board
 In academic partnership with Sir Syed University of Engineering & Technology and UIT University
 
-**4-month fully funded intensive training · PKR 10,000/month stipend · Mentorship & placement support**
+**4-month fully funded intensive training  · Mentorship & placement support**
 
-📋 **Apply now → <https://lnkd.in/dfaPiFiy>**
 
 *Open to engineering graduates and final-year students in Electronics, Electrical, Computer
 Systems and related disciplines.*
