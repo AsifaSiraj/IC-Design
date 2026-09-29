@@ -1,0 +1,15 @@
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+Name                                              File(Line)                 Failure      Pass     Vacuous    Disable    Attempt     Active Peak Active ATV
+                                                                             Count        Count    Count      Count      Count       Count  Count          
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+/fifo_tb/dut/u_fifo_assertions/a_full_empty_mutex fifo_assertions.sv(65)           0          1          -          -          -          -           - off
+/fifo_tb/dut/u_fifo_assertions/a_reset_empty      fifo_assertions.sv(56)           0          1          -          -          -          -           - off
+/fifo_tb/dut/u_fifo_assertions/a_illegal_read_ignored
+                                                  fifo_assertions.sv(76)           0          1          -          -          -          -           - off
+/fifo_tb/dut/u_fifo_assertions/a_illegal_write_ignored
+                                                  fifo_assertions.sv(90)           0          1          -          -          -          -           - off
+/fifo_tb/dut/u_fifo_assertions/a_write_empty_to_nonempty
+                                                  fifo_assertions.sv(103)          0          1          -          -          -          -           - off
+/fifo_tb/dut/u_fifo_assertions/a_read_full_to_nonfull
+                                                  fifo_assertions.sv(116)          0          1          -          -          -          -           - off
+/fifo_tb/dut/u_fifo_assertions/a_data_order       fifo_assertions.sv(129)          0          1          -          -          -          -           - off
